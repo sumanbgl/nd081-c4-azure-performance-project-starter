@@ -25,15 +25,19 @@ from opencensus.ext.flask.flask_middleware import FlaskMiddleware
 logger = logging.getLogger(__name__) # TODO: Setup logger
 
 # Metrics
-exporter = metrics_exporter.new_metrics_exporter(enable_standard_metrics=True, connection_string='') # TODO: Setup exporter
+exporter = metrics_exporter.new_metrics_exporter(enable_standard_metrics=True, 
+connection_string='') # TODO: Setup exporter
 
 # Tracing
-tracer = Tracer(exporter=AzureExporter(connection_string=''), sampler=ProbabilitySampler(1.0), ) # TODO: Setup tracer
+tracer = Tracer(exporter=AzureExporter(connection_string=''), 
+sampler=ProbabilitySampler(1.0), ) # TODO: Setup tracer
 
 app = Flask(__name__)
 
 # Requests
-middleware = middleware = FlaskMiddleware(app, exporter=AzureExporter(connection_string=""), sampler=ProbabilitySampler(rate=1.0),) # TODO: Setup flask middleware
+middleware = middleware = FlaskMiddleware(app, 
+exporter=AzureExporter(connection_string=""), 
+sampler=ProbabilitySampler(rate=1.0),) # TODO: Setup flask middleware
 
 # Load configurations from environment or config file
 app.config.from_pyfile('config_file.cfg')
@@ -54,7 +58,20 @@ else:
     title = app.config['TITLE']
 
 # Redis Connection
-r = redis.Redis()
+#r = redis.Redis()
+redis_server = os.environ['REDIS']
+
+# Redis Connection to another container
+try:
+    if "REDIS_PWD" in os.environ:
+        r = redis.StrictRedis(host=redis_server, 
+        port=6379, 
+        password=os.environ['REDIS_PWD'])
+    else:
+        r = redis.Redis(redis_server)
+    r.ping()
+except redis.ConnectionError:
+    exit('Failed to connect to Redis, terminating.')
 
 # Change title to host name to demo NLB
 if app.config['SHOWHOST'] == "true":
