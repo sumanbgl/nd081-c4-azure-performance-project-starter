@@ -25,6 +25,7 @@ from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
 from opencensus.ext.flask.flask_middleware import FlaskMiddleware
 
+
 # For metrics
 stats = stats_module.stats
 view_manager = stats.view_manager
@@ -35,11 +36,19 @@ config_integration.trace_integrations(['logging'])
 config_integration.trace_integrations(['requests'])
 # Standard Logging
 logger = logging.getLogger(__name__)
+
+handler = AzureLogHandler(connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f')
+handler.setFormatter(logging.Formatter('%(traceId)s %(spanId)s %(message)s'))
+logger.addHandler(handler)
+# Logging custom Events 
+logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f'))
+
 handler = AzureLogHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82')
 handler.setFormatter(logging.Formatter('%(traceId)s %(spanId)s %(message)s'))
 logger.addHandler(handler)
 # Logging custom Events 
 logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82'))
+
 # Set the logging level
 logger.setLevel(logging.INFO)
 
@@ -47,14 +56,18 @@ logger.setLevel(logging.INFO)
 # TODO: Setup exporter
 exporter = metrics_exporter.new_metrics_exporter(
 enable_standard_metrics=True,
-connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82')
+
+connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f')
 view_manager.register_exporter(exporter)
+
 
 # Tracing
 # TODO: Setup tracer
 tracer = Tracer(
  exporter=AzureExporter(
-     connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82'),
+
+     connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f'),
+
  sampler=ProbabilitySampler(1.0),
 )
 
@@ -64,7 +77,9 @@ app = Flask(__name__)
 # TODO: Setup flask middleware
 middleware = FlaskMiddleware(
  app,
- exporter=AzureExporter(connection_string="InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82"),
+
+ exporter=AzureExporter(connection_string="InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f"),
+
  sampler=ProbabilitySampler(rate=1.0)
 )
 
@@ -87,7 +102,20 @@ else:
     title = app.config['TITLE']
 
 # Redis Connection
-r = redis.Redis()
+#r = redis.Redis() #used this code when deployed to vmss
+redis_server = os.environ['REDIS']
+
+# Redis Connection to another container
+try:
+    if "REDIS_PWD" in os.environ:
+        r = redis.StrictRedis(host=redis_server, 
+        port=6379, 
+        password=os.environ['REDIS_PWD'])
+    else:
+        r = redis.Redis(redis_server)
+    r.ping()
+except redis.ConnectionError:
+    exit('Failed to connect to Redis, terminating.')
 
 # Change title to host name to demo NLB
 if app.config['SHOWHOST'] == "true":
@@ -104,8 +132,9 @@ def index():
 
         # Get current values
         vote1 = r.get(button1).decode('utf-8')
-        # TODO: use tracer object to trace cat vote
-        
+
+        # TODO: use tracer object to trace cat vote        
+
         with tracer.span(name="Cats Vote") as span:
             print("Cats Vote")
 
@@ -113,7 +142,6 @@ def index():
         # TODO: use tracer object to trace dog vote
         with tracer.span(name="Dogs Vote") as span:
             print("Dogs Vote")
-
 
         # Return index with values
         return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
@@ -146,10 +174,12 @@ def index():
             # Get current values
             vote1 = r.get(button1).decode('utf-8')
             properties = {'custom_dimensions': {'Cats Vote': vote1}}
+            # TODO: use logger object to log cat vote
             logger.info('Cats Vote', extra=properties)
-            
+
             vote2 = r.get(button2).decode('utf-8')
             properties = {'custom_dimensions': {'Dogs Vote': vote2}}
+            # TODO: use logger object to log dog vote
             logger.info('Dogs Vote', extra=properties)
 
             # Return results
