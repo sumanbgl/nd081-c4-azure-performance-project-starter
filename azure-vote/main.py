@@ -35,11 +35,11 @@ config_integration.trace_integrations(['logging'])
 config_integration.trace_integrations(['requests'])
 # Standard Logging
 logger = logging.getLogger(__name__)
-handler = AzureLogHandler(connection_string='InstrumentationKey=[your-guid]')
+handler = AzureLogHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82')
 handler.setFormatter(logging.Formatter('%(traceId)s %(spanId)s %(message)s'))
 logger.addHandler(handler)
 # Logging custom Events 
-logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=[your-guid]'))
+logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82'))
 # Set the logging level
 logger.setLevel(logging.INFO)
 
@@ -47,14 +47,14 @@ logger.setLevel(logging.INFO)
 # TODO: Setup exporter
 exporter = metrics_exporter.new_metrics_exporter(
 enable_standard_metrics=True,
-connection_string='InstrumentationKey=[your-guid]')
+connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82')
 view_manager.register_exporter(exporter)
 
 # Tracing
 # TODO: Setup tracer
 tracer = Tracer(
  exporter=AzureExporter(
-     connection_string='InstrumentationKey=[your-guid]'),
+     connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82'),
  sampler=ProbabilitySampler(1.0),
 )
 
