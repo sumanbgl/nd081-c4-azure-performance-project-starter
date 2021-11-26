@@ -7,6 +7,8 @@ import sys
 import logging
 from datetime import datetime
 
+import logging
+from datetime import datetime
 # App Insights
 # TODO: Import required libraries for App Insights
 from opencensus.ext.azure.log_exporter import AzureLogHandler
@@ -22,6 +24,8 @@ from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
 from opencensus.ext.flask.flask_middleware import FlaskMiddleware
+
+
 # For metrics
 stats = stats_module.stats
 view_manager = stats.view_manager
@@ -32,11 +36,19 @@ config_integration.trace_integrations(['logging'])
 config_integration.trace_integrations(['requests'])
 # Standard Logging
 logger = logging.getLogger(__name__)
+
 handler = AzureLogHandler(connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f')
 handler.setFormatter(logging.Formatter('%(traceId)s %(spanId)s %(message)s'))
 logger.addHandler(handler)
 # Logging custom Events 
 logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f'))
+
+handler = AzureLogHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82')
+handler.setFormatter(logging.Formatter('%(traceId)s %(spanId)s %(message)s'))
+logger.addHandler(handler)
+# Logging custom Events 
+logger.addHandler(AzureEventHandler(connection_string='InstrumentationKey=a8a38708-e09f-40f6-b92d-463a5d522b82'))
+
 # Set the logging level
 logger.setLevel(logging.INFO)
 
@@ -44,6 +56,7 @@ logger.setLevel(logging.INFO)
 # TODO: Setup exporter
 exporter = metrics_exporter.new_metrics_exporter(
 enable_standard_metrics=True,
+
 connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f')
 view_manager.register_exporter(exporter)
 
@@ -52,7 +65,9 @@ view_manager.register_exporter(exporter)
 # TODO: Setup tracer
 tracer = Tracer(
  exporter=AzureExporter(
+
      connection_string='InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f'),
+
  sampler=ProbabilitySampler(1.0),
 )
 
@@ -62,7 +77,9 @@ app = Flask(__name__)
 # TODO: Setup flask middleware
 middleware = FlaskMiddleware(
  app,
+
  exporter=AzureExporter(connection_string="InstrumentationKey=1a3b3682-eceb-468b-93b6-f3f9bae2750f"),
+
  sampler=ProbabilitySampler(rate=1.0)
 )
 
@@ -85,7 +102,7 @@ else:
     title = app.config['TITLE']
 
 # Redis Connection
-#r = redis.Redis()
+#r = redis.Redis() #used this code when deployed to vmss
 redis_server = os.environ['REDIS']
 
 # Redis Connection to another container
@@ -115,7 +132,9 @@ def index():
 
         # Get current values
         vote1 = r.get(button1).decode('utf-8')
+
         # TODO: use tracer object to trace cat vote        
+
         with tracer.span(name="Cats Vote") as span:
             print("Cats Vote")
 
@@ -168,6 +187,6 @@ def index():
 
 if __name__ == "__main__":
     # comment line below when deploying to VMSS
-    app.run() # local
+    #app.run() # local
     # uncomment the line below before deployment to VMSS
-    # app.run(host='0.0.0.0', threaded=True, debug=True) # remote
+    app.run(host='0.0.0.0', threaded=True, debug=True) # remote
